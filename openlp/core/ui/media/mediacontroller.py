@@ -434,7 +434,7 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
         :return: None
         """
         controller.mediabar.blockSignals(True)
-        if controller.media_play_item.is_theme_background:
+        if controller.media_play_item.is_background:
             loop_set = False
             loop_disabled = True
             controller.media_player.toggle_loop(True)
@@ -691,6 +691,7 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
         Local function to kill the live media
         """
         self._media_set_visibility(self.live_controller, False)
+        self.live_controller.media_play_item = MediaPlayItem()
 
     def _media_set_visibility(self, controller: SlideController, visible):
         """

@@ -38,6 +38,7 @@ from openlp.core.common.path import create_paths
 from openlp.core.common.registry import Registry, RegistryBase
 from openlp.core.common.utils import wait_for
 from openlp.core.lib import build_icon, check_item_selected, create_thumb, get_text_file_string, validate_thumb
+from openlp.core.lib.videoframes import cache_video_preview_frame
 from openlp.core.lib.exceptions import ValidationError
 from openlp.core.lib.theme import Theme
 from openlp.core.lib.ui import MultipleViewModeList, add_list_view_mode_items_to_toolbar, create_widget_action, \
@@ -752,6 +753,8 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                     shutil.copyfile(background_file, theme.background_filename)
                 except OSError:
                     self.log_exception('Failed to save theme image')
+        if theme.background_type == 'video' and theme.background_filename:
+            cache_video_preview_frame(theme)
 
     def save_preview(self, theme_name, preview_pixmap):
         """

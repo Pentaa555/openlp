@@ -103,6 +103,12 @@ class MediaPlayer(MediaBase, LogMixin):
         if self.controller.media_play_item.media_type == MediaType.Dual:
             return
         if event == QMediaPlayer.MediaStatus.EndOfMedia:
+            if self.controller.media_play_item.is_background \
+                    and self.controller.media_play_item.media_type == MediaType.Video:
+                self.media_player.stop()
+                self.media_player.setPosition(0)
+                self.media_player.play()
+                return
             if self.controller.is_live:
                 Registry().get("media_controller").live_media_status_changed.emit()
             else:

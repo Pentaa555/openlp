@@ -72,7 +72,6 @@ class MediaPlayItem(object):
     """
     This class hold the media related info
     """
-    external_stream = []  # for remote things like USB Cameras
     audio_file = None  # for song Audio files when we have background videos
     media_file = None  # for standalone media
     is_background = False
@@ -86,6 +85,9 @@ class MediaPlayItem(object):
     media_autostart = False
     audio_autostart = False
     request_play = False  # On Load do I reun play
+
+    def __init__(self):
+        self.external_stream = []  # for remote things like USB Cameras
 
 
 def media_state() -> int:

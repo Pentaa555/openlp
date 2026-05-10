@@ -114,6 +114,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.is_live = False
         self.controller_type = None
         self.displays = []
+        self.stage_displays = []
         self.screens = ScreenList()
         self.media_player = None
         self.audio_player = None
@@ -146,22 +147,21 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.close_displays()
         for screen in self.screens:
             if screen.is_display:
-                will_start_hidden = self._current_hide_mode == HideMode.Screen
+                will_start_hidden = self._current_hide_mode is not None
                 display = DisplayWindow(self, screen, start_hidden=will_start_hidden,
                                         after_loaded_callback=self._display_after_loaded_callback,
                                         window_title='Live Screen' if self.is_live else 'Preview Screen')
                 self.displays.append(display)
-                self._reset_blank(False)
         if self.display:
             self.__add_actions_to_widget(self.display)
 
     def _display_after_loaded_callback(self):
-        # As the display was reloaded, we'll need to process current item again
-        if self.service_item:
-            self._process_item(self.service_item, self.selected_row, is_reloading=True)
-        # Restoring last hide mode
+        # Restore the hide state BEFORE loading content so no theme/slide flash occurs
         if self._current_hide_mode:
             self.display.hide_display(self._current_hide_mode)
+        # Reload the current item now that the display is in the correct visual state
+        if self.service_item:
+            self._process_item(self.service_item, self.selected_row, is_reloading=True)
 
     def close_displays(self):
         """
@@ -173,6 +173,28 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             display.close()
             del display
         self.displays = []
+
+    def add_stage_display(self, display):
+        """
+        Register an additional display that mirrors the live output (stage monitor).
+        If a service item is already loaded, push the current state to the display.
+        """
+        if display in self.stage_displays:
+            return
+        self.stage_displays.append(display)
+        if self.service_item:
+            theme_data = self.service_item.get_theme_data()
+            display.set_theme(theme_data, service_item_type=self.service_item.service_item_type)
+            if self.service_item.is_text():
+                display.load_verses(self.service_item.rendered_slides)
+            elif self.service_item.is_image():
+                display.load_images(self.service_item.slides)
+            display.go_to_slide(self.selected_row)
+
+    def remove_stage_display(self, display):
+        """Unregister a stage display."""
+        if display in self.stage_displays:
+            self.stage_displays.remove(display)
 
     @property
     def display(self):
@@ -838,6 +860,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Set theme for displays
         for display in self.displays:
             display.set_background_image(image_path)
+        for display in self.stage_displays:
+            display.set_background_image(image_path)
 
     def on_theme_changed(self, var=None):
         """
@@ -858,6 +882,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Set theme for displays
         for display in self.displays:
             display.reload_theme()
+        for display in self.stage_displays:
+            display.reload_theme()
 
     def _set_theme(self, service_item):
         """
@@ -871,6 +897,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.preview_display.set_theme(theme_data, service_item_type=service_item.service_item_type)
         # Set theme for displays
         for display in self.displays:
+            display.set_theme(theme_data, service_item_type=service_item.service_item_type)
+        for display in self.stage_displays:
             display.set_theme(theme_data, service_item_type=service_item.service_item_type)
 
     def _process_item(self, service_item, slide_no, is_reloading=False):
@@ -918,6 +946,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         if self.is_live and not old_item_provides_own_display and new_item_provides_own_display:
             for display in self.displays:
                 display.finish_with_current_item()
+            for display in self.stage_displays:
+                display.finish_with_current_item()
         # Prepare the new slides for text / image items
         row = 0
         width = self.main_window.control_splitter.sizes()[self.split]
@@ -925,6 +955,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             self.preview_display.load_verses(self.service_item.rendered_slides)
             self.preview_display.show()
             for display in self.displays:
+                display.load_verses(self.service_item.rendered_slides)
+            for display in self.stage_displays:
                 display.load_verses(self.service_item.rendered_slides)
             # Replace the song menu so the verses match the song and are not cumulative
             if self.is_live:
@@ -950,6 +982,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 self.preview_display.load_images(self.service_item.slides)
                 for display in self.displays:
                     display.load_images(self.service_item.slides)
+                for display in self.stage_displays:
+                    display.load_images(self.service_item.slides)
             for _, _ in enumerate(self.service_item.slides):
                 row += 1
                 self.slide_list[str(row)] = row - 1
@@ -970,6 +1004,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             if self.is_live and self._current_hide_mode is None and old_item.is_media() and not \
                     old_item.requires_media() and not self.service_item.is_capable(ItemCapabilities.ProvidesOwnDisplay):
                 for display in self.displays:
+                    display.show_display()
+                for display in self.stage_displays:
                     display.show_display()
         self.enable_tool_bar(self.service_item)
         # Reset blanking if needed
@@ -998,7 +1034,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 self.application.process_events()
             self.ignore_toolbar_resize_events = False
             self.on_controller_size_changed()
-            if not is_reloading and self.settings.value('core/auto unblank'):
+            if not is_reloading and self.settings.value('core/auto unblank') \
+                    and self._current_hide_mode != HideMode.Screen:
                 self.set_hide_mode(None)
         self.log_debug('_process_item end')
 
@@ -1187,6 +1224,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                                        [self.service_item, self.is_live, row])
             else:
                 for display in self.displays:
+                    display.go_to_slide(row)
+                for display in self.stage_displays:
                     display.go_to_slide(row)
                 if not self.service_item.is_text():
                     # reset the store used to display first image

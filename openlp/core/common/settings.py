@@ -378,6 +378,12 @@ class Settings(QtCore.QSettings):
         # The other display settings (display position and dimensions) are defined in the ScreenList class due to a
         # circular dependency.
         'core/display on monitor': False,
+        'core/stage screen': -1,
+        'core/stage geometry': b'',
+        'core/stage text mode': 'auto',
+        'core/stage text size': 48,
+        'core/stage clock size': 20,
+        'core/stage next height': 50,
         'core/override position': False,
         'core/monitor': {},
         'core/application version': '0.0',
@@ -786,6 +792,8 @@ class Settings(QtCore.QSettings):
             'shortcuts/viewMediaManagerItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F8)],
             'shortcuts/viewPreviewPanel': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F11)],
             'shortcuts/viewLivePanel': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F12)],
+            'shortcuts/viewStageDisplay': [],
+            'shortcuts/viewTestScreens': [],
             'shortcuts/viewServiceManagerItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F9)],
             'shortcuts/webSiteItem': []
         })

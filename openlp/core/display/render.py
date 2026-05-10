@@ -21,6 +21,7 @@
 """
 The :mod:`~openlp.display.render` module contains functions for rendering.
 """
+import copy
 import html
 import logging
 import mako
@@ -40,6 +41,7 @@ from openlp.core.display.screens import ScreenList
 from openlp.core.display.window import DisplayWindow
 from openlp.core.lib import ItemCapabilities
 from openlp.core.lib.formattingtags import FormattingTags
+from openlp.core.lib.videoframes import get_video_preview_frame
 
 
 log = logging.getLogger(__name__)
@@ -600,7 +602,13 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         # save value for use in format_slide
         self.force_page = force_page
         if not self.force_page:
-            self.set_theme(theme_data, is_sync=True, service_item_type=ServiceItemType.Text)
+            theme_for_preview = copy.deepcopy(theme_data)
+            if theme_for_preview.background_type == 'video':
+                frame_path = get_video_preview_frame(theme_for_preview)
+                if frame_path:
+                    theme_for_preview.background_type = 'image'
+                    theme_for_preview.background_filename = frame_path
+            self.set_theme(theme_for_preview, is_sync=True, service_item_type=ServiceItemType.Text)
             slides = self.format_slide(VERSE, None)
             verses = dict()
             verses['title'] = TITLE
@@ -612,7 +620,9 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
             wait_for(lambda: False, timeout=1)
             self.force_page = False
             if generate_screenshot:
-                return self.grab()
+                pixmap = QtGui.QPixmap(self.webview.size())
+                self.webview.render(pixmap)
+                return pixmap
         self.force_page = False
         return None
 

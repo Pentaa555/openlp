@@ -59,6 +59,7 @@ from openlp.core.ui.servicemanager import ServiceManager
 from openlp.core.ui.settingsform import SettingsForm
 from openlp.core.ui.shortcutlistform import ShortcutListForm
 from openlp.core.ui.style import PROGRESSBAR_STYLE, get_library_stylesheet
+from openlp.core.ui.stagedisplay import LivePreviewWindow, StageDisplayWindow, _SIM_W, _SIM_H
 from openlp.core.ui.thememanager import ThemeManager
 from openlp.core.version import get_version
 from openlp.core.widgets.dialogs import FileDialog
@@ -228,6 +229,10 @@ class Ui_MainWindow(object):
                                                 triggers=self.set_preview_panel_visibility)
         self.view_live_panel = create_action(main_window, 'viewLivePanel', can_shortcuts=True, checked=live_visible,
                                              category=UiStrings().View, triggers=self.set_live_panel_visibility)
+        self.view_stage_display = create_action(main_window, 'viewStageDisplay', can_shortcuts=True, checked=False,
+                                                category=UiStrings().View, triggers=self.toggle_stage_display)
+        self.view_test_screens = create_action(main_window, 'viewTestScreens', can_shortcuts=True, checked=False,
+                                               category=UiStrings().View, triggers=self.toggle_test_screens)
         self.lock_panel = create_action(main_window, 'lockPanel', can_shortcuts=True, checked=panel_locked,
                                         category=UiStrings().View, triggers=self.set_lock_panel)
         action_list.add_category(UiStrings().ViewMode, CategoryOrder.standard_menu)
@@ -323,7 +328,8 @@ class Ui_MainWindow(object):
         add_actions(self.view_mode_menu, (self.mode_default_item, self.mode_setup_item, self.mode_live_item))
         add_actions(self.view_menu, (self.view_mode_menu.menuAction(), None, self.view_media_manager_item,
                     self.view_projector_manager_item, self.view_service_manager_item, self.view_theme_manager_item,
-                    None, self.view_preview_panel, self.view_live_panel, None, self.lock_panel))
+                    None, self.view_preview_panel, self.view_live_panel, self.view_stage_display,
+                    self.view_test_screens, None, self.lock_panel))
         # i18n add Language Actions
         add_actions(self.settings_language_menu, (self.auto_language_item, None))
         add_actions(self.settings_language_menu, self.language_group.actions())
@@ -430,6 +436,15 @@ class Ui_MainWindow(object):
         self.lock_panel.setText(translate('OpenLP.MainWindow', 'L&ock visibility of the panels'))
         self.lock_panel.setStatusTip(translate('OpenLP.MainWindow', 'Lock visibility of the panels.'))
         self.view_live_panel.setStatusTip(translate('OpenLP.MainWindow', 'Toggle visibility of the Live.'))
+        self.view_stage_display.setText(translate('OpenLP.MainWindow', '&Stage Display'))
+        self.view_stage_display.setToolTip(translate('OpenLP.MainWindow', 'Show or hide the Stage Display window'))
+        self.view_stage_display.setStatusTip(
+            translate('OpenLP.MainWindow', 'Toggle the Stage Display window for the presenter monitor.'))
+        self.view_test_screens.setText(translate('OpenLP.MainWindow', '&Test Screens (Simulate)'))
+        self.view_test_screens.setToolTip(
+            translate('OpenLP.MainWindow', 'Open simulated Audience and Stage windows side-by-side for testing'))
+        self.view_test_screens.setStatusTip(
+            translate('OpenLP.MainWindow', 'Simulate multiple screens on a single monitor for testing.'))
         self.settings_plugin_list_item.setText(translate('OpenLP.MainWindow', '&Manage Plugins'))
         self.settings_plugin_list_item.setStatusTip(translate('OpenLP.MainWindow', 'You can enable and disable plugins '
                                                                                    'from here.'))
@@ -1149,6 +1164,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
             self.change_data_directory()
         # Close down WebSocketServer
         self.ws_server.close()
+        # Close down simulated screens if open
+        if hasattr(self, '_sim_live') and self._sim_live is not None:
+            self._sim_live.close()
+        if hasattr(self, '_stage_display') and self._stage_display is not None:
+            self._stage_display.close()
         # Close down the display
         self.live_controller.close_displays()
         # Clean temporary files used by services
@@ -1288,6 +1308,57 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         self.settings.setValue('user interface/live panel', is_visible)
         self.view_live_panel.setChecked(is_visible)
         self.settings.setValue('user interface/is preset layout', False)
+
+    def toggle_stage_display(self, is_visible: bool):
+        """
+        Show or hide the native Stage Display window.
+        """
+        if is_visible:
+            if not hasattr(self, '_stage_display') or self._stage_display is None:
+                self._stage_display = StageDisplayWindow()
+            self._stage_display.show_stage()
+        else:
+            if hasattr(self, '_stage_display') and self._stage_display is not None:
+                self._stage_display.close()
+        self.view_stage_display.setChecked(is_visible)
+
+    def toggle_test_screens(self, is_visible: bool):
+        """
+        Open (or close) a pair of simulated screen windows for single-monitor testing.
+        Left window = Audience view (what the live display shows).
+        Right window = Stage display (what the presenter sees).
+        """
+        if is_visible:
+            avail = QtWidgets.QApplication.primaryScreen().availableGeometry()
+            gap = 4
+            w, h = _SIM_W, _SIM_H
+            total_w = w * 2 + gap
+            start_x = avail.x() + (avail.width() - total_w) // 2
+            start_y = avail.y() + (avail.height() - h) // 2
+            from PySide6 import QtCore
+            live_rect = QtCore.QRect(start_x, start_y, w, h)
+            stage_rect = QtCore.QRect(start_x + w + gap, start_y, w + 250, h)
+
+            if not hasattr(self, '_sim_live') or self._sim_live is None:
+                self._sim_live = LivePreviewWindow()
+            self._sim_live.show_at(live_rect)
+
+            if not hasattr(self, '_stage_display') or self._stage_display is None:
+                self._stage_display = StageDisplayWindow()
+            self._stage_display.show_stage()
+            self._stage_display.setGeometry(stage_rect)
+            self._stage_display.raise_()
+
+            self.view_stage_display.setChecked(True)
+        else:
+            if hasattr(self, '_sim_live') and self._sim_live is not None:
+                self._sim_live.close()
+                self._sim_live = None
+            if hasattr(self, '_stage_display') and self._stage_display is not None:
+                self._stage_display.close()
+                self._stage_display = None
+            self.view_stage_display.setChecked(False)
+        self.view_test_screens.setChecked(is_visible)
 
     def load_settings(self):
         """

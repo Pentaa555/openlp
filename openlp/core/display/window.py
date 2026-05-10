@@ -37,6 +37,7 @@ from openlp.core.common.platform import is_win, is_macosx
 from openlp.core.common.registry import Registry
 from openlp.core.common.utils import wait_for
 from openlp.core.display.screens import ScreenList
+from openlp.core.lib.videoframes import get_video_preview_frame
 from openlp.core.ui import HideMode
 
 
@@ -451,13 +452,25 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
                     theme_copy.background_type = 'transparent'
         else:
             # If preview Display with media background we just show the background color, no media
-            if theme.background_type == 'stream' or theme.background_type == 'video':
+            if theme.background_type == 'stream':
                 theme_copy.background_type = 'solid'
                 theme_copy.background_start_color = theme.background_border_color
                 theme_copy.background_end_color = theme.background_border_color
                 theme_copy.background_main_color = theme.background_border_color
                 theme_copy.background_footer_color = theme.background_border_color
                 theme_copy.background_color = theme.background_border_color
+            elif theme.background_type == 'video':
+                frame_path = get_video_preview_frame(theme_copy)
+                if frame_path:
+                    theme_copy.background_type = 'image'
+                    theme_copy.background_filename = frame_path
+                else:
+                    theme_copy.background_type = 'solid'
+                    theme_copy.background_start_color = theme.background_border_color
+                    theme_copy.background_end_color = theme.background_border_color
+                    theme_copy.background_main_color = theme.background_border_color
+                    theme_copy.background_footer_color = theme.background_border_color
+                    theme_copy.background_color = theme.background_border_color
             # If preview Display for media so we need to display black box.
             elif service_item_type == ServiceItemType.Command or theme.background_type == 'live':
                 theme_copy.background_type = 'solid'

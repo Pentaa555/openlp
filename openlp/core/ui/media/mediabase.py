@@ -131,10 +131,9 @@ class MediaBase(RegistryProperties):
             self.controller.mediabar.seek_slider.setSliderPosition(self.media_player.position())
             self.controller.mediabar.seek_slider.blockSignals(False)
 
-    def toggle_loop(self, controller, loop_required: bool) -> None:
+    def toggle_loop(self, loop_required: bool) -> None:
         """
         Changes the looping style
-        :param controller: Which Controller is running the show.
         :param loop_required: Are we to be toggled or not
         :return: none
         """
