@@ -37,7 +37,8 @@ from openlp.core.common.mixins import LogMixin, RegistryProperties
 from openlp.core.common.path import create_paths
 from openlp.core.common.registry import Registry, RegistryBase
 from openlp.core.common.utils import wait_for
-from openlp.core.lib import build_icon, check_item_selected, create_thumb, get_text_file_string, validate_thumb
+from openlp.core.lib import DEFAULT_THUMBNAIL_HEIGHT, build_icon, check_item_selected, create_thumb, \
+    get_text_file_string, validate_thumb
 from openlp.core.lib.videoframes import cache_video_preview_frame
 from openlp.core.lib.exceptions import ValidationError
 from openlp.core.lib.theme import Theme
@@ -765,7 +766,13 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
             sample_path_name.unlink()
         preview_pixmap.save(str(sample_path_name), 'png')
         thumb_path = self.thumb_path / '{name}.png'.format(name=theme_name)
-        create_thumb(sample_path_name, thumb_path, False)
+        # Create the thumbnail directly from the rendered pixmap to avoid color shifts
+        # seen on some systems when re-reading/writing through image readers.
+        thumbnail_pixmap = preview_pixmap.scaledToHeight(
+            DEFAULT_THUMBNAIL_HEIGHT,
+            QtCore.Qt.TransformationMode.SmoothTransformation
+        )
+        thumbnail_pixmap.save(str(thumb_path), 'png')
 
     def update_preview_images(self, theme_name_list=None):
         """

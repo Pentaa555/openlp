@@ -26,6 +26,7 @@ All the core functions of the OpenLP application including the GUI, settings,
 logging and a plugin framework are contained within the openlp.core module.
 """
 import argparse
+import ctypes
 import logging
 import os
 import sys
@@ -489,6 +490,11 @@ def main():
         qt_args.extend(['-platform', 'xcb'])
     # Initialise the resources
     qInitResources()
+    if is_win():
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('OpenLP.OpenLP')
+        except Exception:
+            pass
     # Initialise OpenLP
     app = OpenLP()
     Registry.create()
@@ -519,6 +525,7 @@ def main():
     # Instantiating QCoreApplication
     init_webview_custom_schemes()
     application = QtWidgets.QApplication(qt_args)
+    application.setWindowIcon(QtGui.QIcon(':/icon/openlp-logo.svg'))
     application.setAttribute(QtCore.Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings, True)
     # Doing HiDPI adjustments that need to be done after QCoreApplication instantiation.
     apply_dpi_adjustments_stage_application(hidpi_mode, application)

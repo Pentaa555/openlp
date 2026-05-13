@@ -61,9 +61,15 @@ class Server(QtCore.QObject, LogMixin):
             args.remove('OpenLP')
         # Yes, there is.
         if len(args):
+            # QTextStream.setCodec was removed in Qt6/PySide6. Only call if available.
             self.out_stream = QtCore.QTextStream(self.out_socket)
-            self.out_stream.setCodec('UTF-8')
-            self.out_socket.write(str.encode("".join(args)))
+            if hasattr(self.out_stream, 'setCodec'):
+                try:
+                    self.out_stream.setCodec('UTF-8')
+                except Exception:
+                    pass
+            # Write bytes directly to socket (works across Qt versions)
+            self.out_socket.write("".join(args).encode('utf-8'))
             if not self.out_socket.waitForBytesWritten(10):
                 raise Exception(str(self.out_socket.errorString()))
             self.out_socket.disconnectFromServer()
@@ -93,7 +99,11 @@ class Server(QtCore.QObject, LogMixin):
         if not self.in_socket:
             return
         self.in_stream = QtCore.QTextStream(self.in_socket)
-        self.in_stream.setCodec('UTF-8')
+        if hasattr(self.in_stream, 'setCodec'):
+            try:
+                self.in_stream.setCodec('UTF-8')
+            except Exception:
+                pass
         self.in_socket.readyRead.connect(self._on_ready_read)
 
     @QtCore.Slot()
