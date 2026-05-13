@@ -43,6 +43,24 @@ log = logging.getLogger(__name__)
 TODAY = QtCore.QDate.currentDate()
 
 
+class _SongUsageSaveWorker(QtCore.QRunnable):
+    """
+    Save a song usage record off the UI thread to avoid blocking the live send.
+    """
+
+    def __init__(self, payload):
+        super().__init__()
+        self.payload = payload
+
+    def run(self):
+        try:
+            manager = DBManager('songusage', init_schema, upgrade_mod=upgrade)
+            song_usage_item = SongUsageItem(**self.payload)
+            manager.save_object(song_usage_item)
+        except Exception:
+            log.exception('Failed to save song usage record')
+
+
 class SongUsagePlugin(Plugin):
     """
     Song Usage Plugin class
@@ -190,17 +208,17 @@ class SongUsagePlugin(Plugin):
     def _add_song_usage(self, source, item):
         audit = item[0].audit
         if self.song_usage_active and audit:
-            song_usage_item = SongUsageItem(
-                usagedate=datetime.today(),
-                usagetime=datetime.now().time(),
-                title=audit[0],
-                copyright=audit[2],
-                ccl_number=audit[3],
-                authors=' '.join(audit[1]),
-                plugin_name=item[0].name,
-                source=source
-            )
-            self.manager.save_object(song_usage_item)
+            payload = {
+                'usagedate': datetime.today(),
+                'usagetime': datetime.now().time(),
+                'title': audit[0],
+                'copyright': audit[2],
+                'ccl_number': audit[3],
+                'authors': ' '.join(audit[1]),
+                'plugin_name': item[0].name,
+                'source': source
+            }
+            QtCore.QThreadPool.globalInstance().start(_SongUsageSaveWorker(payload))
 
     def on_song_usage_delete(self):
         """

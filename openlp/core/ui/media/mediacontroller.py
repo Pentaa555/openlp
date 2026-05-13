@@ -399,8 +399,10 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
         if controller.media_player and controller.media_play_item.external_stream:
             controller.media_player.play()
         self.media_volume(controller, get_volume(controller))
-        #     if not start_hidden:
-        self._media_set_visibility(controller, True)
+        # Respect Show Desktop (HideMode.Screen): keep the video widget hidden so it
+        # doesn't cover the desktop. The display button state already reflects the user's intent.
+        should_be_visible = not (controller.is_live and controller.current_hide_mode == HideMode.Screen)
+        self._media_set_visibility(controller, should_be_visible)
         self._media_bar(controller, "play")
         # Start Timer for ui updates
         controller.mediabar.seek_slider.blockSignals(False)

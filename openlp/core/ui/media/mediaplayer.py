@@ -88,6 +88,7 @@ class MediaPlayer(MediaBase, LogMixin):
         self.display = display
         self.media_player.positionChanged.connect(self.position_changed_event)
         self.media_player.mediaStatusChanged.connect(self.media_status_changed_event)
+        self.media_player.durationChanged.connect(self.duration_changed_event)
         # device stream objects. setVideoOutput is called when loading stream, video_widget can't be used by both
         # QMediaCaptureSession and QMediaPlayer
         self.media_capture_session = QMediaCaptureSession()
@@ -127,6 +128,18 @@ class MediaPlayer(MediaBase, LogMixin):
             Registry().get("media_controller").live_media_tick.emit()
         else:
             Registry().get("media_controller").preview_media_tick.emit()
+
+    def duration_changed_event(self, duration) -> None:
+        """
+        Update media length and seek UI when duration becomes available.
+        """
+        if duration and duration > 0:
+            self.controller.media_play_item.length = duration
+            self.controller.mediabar.seek_slider.setMaximum(duration)
+            self.controller.mediabar.seek_slider.setTickInterval(max(duration // 10, 1))
+            media_controller = Registry().get("media_controller")
+            if media_controller:
+                media_controller._update_seek_ui(self.controller)
 
     def toggle_loop(self, loop_required: bool) -> None:
         """

@@ -37,7 +37,7 @@ from openlp.core.common.platform import is_win, is_macosx
 from openlp.core.common.registry import Registry
 from openlp.core.common.utils import wait_for
 from openlp.core.display.screens import ScreenList
-from openlp.core.lib.videoframes import get_video_preview_frame
+from openlp.core.lib.videoframes import get_cached_video_preview_frame
 from openlp.core.ui import HideMode
 
 
@@ -460,7 +460,7 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
                 theme_copy.background_footer_color = theme.background_border_color
                 theme_copy.background_color = theme.background_border_color
             elif theme.background_type == 'video':
-                frame_path = get_video_preview_frame(theme_copy)
+                frame_path = get_cached_video_preview_frame(theme_copy)
                 if frame_path:
                     theme_copy.background_type = 'image'
                     theme_copy.background_filename = frame_path

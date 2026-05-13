@@ -24,7 +24,8 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtMultimedia import QMediaPlayer, QVideoSink
+from PySide6.QtGui import QImage, QTransform
+from PySide6.QtMultimedia import QMediaPlayer, QVideoSink, QtVideo
 
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.utils import wait_for
@@ -55,7 +56,15 @@ def extract_video_frame(video_path: Path, offset_ms: int = PREVIEW_FRAME_OFFSET_
 
     def _on_frame(video_frame):
         if captured[0] is None and video_frame.isValid():
-            captured[0] = video_frame.toImage()
+            image = video_frame.toImage().convertToFormat(QImage.Format.Format_ARGB32)
+            rotation = video_frame.rotation()
+            if rotation == QtVideo.Rotation.Clockwise90:
+                image = image.transformed(QTransform().rotate(90))
+            elif rotation == QtVideo.Rotation.Clockwise180:
+                image = image.transformed(QTransform().rotate(180))
+            elif rotation == QtVideo.Rotation.Clockwise270:
+                image = image.transformed(QTransform().rotate(270))
+            captured[0] = image
 
     def _on_status(status):
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
@@ -90,6 +99,17 @@ def get_video_preview_frame(theme) -> Path | None:
     if path.exists():
         return path
     return _extract_and_save(theme, path)
+
+
+def get_cached_video_preview_frame(theme) -> Path | None:
+    """
+    Return the cached preview frame path only if it already exists on disk.
+    Never triggers extraction — safe to call on the main/UI thread.
+
+    :return: Path to the PNG, or None if not yet cached.
+    """
+    path = _frame_path(theme)
+    return path if path.exists() else None
 
 
 def cache_video_preview_frame(theme) -> Path | None:

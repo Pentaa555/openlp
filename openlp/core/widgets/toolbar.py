@@ -139,6 +139,27 @@ class OpenLPToolbar(QtWidgets.QToolBar):
 
 
 class MediaToolbar(OpenLPToolbar):
+    class _SeekSlider(QtWidgets.QSlider):
+        """
+        QSlider that jumps to the click position (for media seek).
+        """
+
+        def mousePressEvent(self, event):
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                option = QtWidgets.QStyleOptionSlider()
+                self.initStyleOption(option)
+                if self.orientation() == QtCore.Qt.Orientation.Horizontal:
+                    pos = int(event.position().x())
+                    new_value = QtWidgets.QStyle.sliderValueFromPosition(
+                        self.minimum(), self.maximum(), pos, self.width(), option.upsideDown)
+                else:
+                    pos = int(event.position().y())
+                    new_value = QtWidgets.QStyle.sliderValueFromPosition(
+                        self.minimum(), self.maximum(), pos, self.height(), option.upsideDown)
+                self.setValue(new_value)
+                event.accept()
+            super().mousePressEvent(event)
+
     def __init__(self, parent, hide_components=[], action_prefixes=''):
         super().__init__(parent)
         self.on_action = lambda *args: None
@@ -179,7 +200,7 @@ class MediaToolbar(OpenLPToolbar):
         self.add_toolbar_widget(self.position_label)
         if 'seek' not in self.hide_components:
             # Build the media seek_slider.
-            self.seek_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+            self.seek_slider = self._SeekSlider(QtCore.Qt.Orientation.Horizontal)
             self.seek_slider.setMaximum(1000)
             self.seek_slider.setTracking(True)
             self.seek_slider.setMouseTracking(True)
@@ -219,4 +240,18 @@ class MediaToolbar(OpenLPToolbar):
 
     def _on_action(self, *args):
         sender = self.sender().objectName() if self.sender().objectName() else self.sender().text()
-        Registry().execute("{text}".format(text=sender), [self.parent, args])
+        controller = self.parent() if callable(self.parent) else self.parent
+        while controller and not hasattr(controller, 'is_live'):
+            controller = controller.parent() if callable(controller.parent) else controller.parent
+        if controller is None:
+            live_controller = Registry().get('live_controller')
+            if live_controller and live_controller.mediabar is self:
+                controller = live_controller
+            else:
+                preview_controller = Registry().get('preview_controller')
+                if preview_controller and preview_controller.mediabar is self:
+                    controller = preview_controller
+        if controller is None:
+            log.error('MediaToolbar action ignored; controller not found for %s', sender)
+            return
+        Registry().execute("{text}".format(text=sender), [controller, args])

@@ -39,7 +39,7 @@ from openlp.core.common.registry import Registry, RegistryBase
 from openlp.core.common.utils import wait_for
 from openlp.core.display.screens import ScreenList
 from openlp.core.display.window import DisplayWindow
-from openlp.core.lib import ItemCapabilities
+from openlp.core.lib import ItemCapabilities, image_to_data_uri
 from openlp.core.lib.formattingtags import FormattingTags
 from openlp.core.lib.videoframes import get_video_preview_frame
 
@@ -607,7 +607,7 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
                 frame_path = get_video_preview_frame(theme_for_preview)
                 if frame_path:
                     theme_for_preview.background_type = 'image'
-                    theme_for_preview.background_filename = frame_path
+                    theme_for_preview.background_filename = image_to_data_uri(frame_path)
             self.set_theme(theme_for_preview, is_sync=True, service_item_type=ServiceItemType.Text)
             slides = self.format_slide(VERSE, None)
             verses = dict()
@@ -881,10 +881,9 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         self.setVisible(True)
         QtWidgets.QApplication.instance().processEvents()
         wait_for(lambda: False, timeout=1)
-        pixmap = self.grab()
-        self.setVisible(False)
         pixmap = QtGui.QPixmap(self.webview.size())
         self.webview.render(pixmap)
+        self.setVisible(False)
         if fname:
             ext = os.path.splitext(fname)[-1][1:]
             pixmap.save(fname, ext)

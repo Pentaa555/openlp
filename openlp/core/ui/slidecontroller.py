@@ -23,6 +23,7 @@ The :mod:`slidecontroller` module contains the most important part of OpenLP - t
 """
 import copy
 import datetime
+import time
 from collections import deque
 from pathlib import Path, PurePath
 from threading import Lock
@@ -910,6 +911,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         :param is_reloading: If the controller is reloading the current item, due to a display update (for example).
         """
         self.log_debug('_process_item start')
+        timing_start = time.perf_counter()
+        timing_last = timing_start
         self.on_stop_loop()
         self.ignore_toolbar_resize_events = True
         old_item = self.service_item
@@ -934,6 +937,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 self._set_theme(self.service_item)
         else:
             self._set_theme(self.service_item)
+        timing_after_theme = time.perf_counter()
         self.info_label.setText("–  " + self.service_item.title)
         self.slide_list = {}
         # if the old item was text or images (ie doesn't provide its own display) and the new item provides its own
@@ -987,7 +991,9 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             for _, _ in enumerate(self.service_item.slides):
                 row += 1
                 self.slide_list[str(row)] = row - 1
+        timing_after_load = time.perf_counter()
         self.preview_widget.replace_service_item(self.service_item, width, slide_no)
+        timing_after_preview_list = time.perf_counter()
         # Tidy up aspects associated with the old item
         if old_item:
             new_item_has_background_video = self.service_item.is_capable(ItemCapabilities.HasBackgroundVideo) or \
@@ -1013,10 +1019,13 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                                           self.service_item.is_capable(ItemCapabilities.ProvidesOwnDisplay)):
             self._reset_blank(self.service_item.is_capable(ItemCapabilities.ProvidesOwnDisplay))
         if self.service_item.is_media() or self.service_item.requires_media():
+            media_start_ts = time.perf_counter()
             self._set_theme(self.service_item)
             if self.service_item.is_command():
                 self.preview_display.load_verses(media_empty_song, True)
             self.on_media_start(self.service_item)
+            media_end_ts = time.perf_counter()
+            self.log_debug('_process_item media_start={elapsed:.3f}s'.format(elapsed=media_end_ts - media_start_ts))
             # Try to get display back on top of media window asap. If the media window
             # is not loaded by the time _raise_displays is run, lyrics (web display)
             # will be under the media window (not good).
@@ -1028,7 +1037,11 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         if self.service_item.from_service:
             self.preview_widget.setFocus()
         if self.is_live:
+            started_ts = time.perf_counter()
             Registry().execute('slidecontroller_{item}_started'.format(item=self.type_prefix), [self.service_item])
+            started_end_ts = time.perf_counter()
+            self.log_debug('_process_item live_started_hooks={elapsed:.3f}s'
+                           .format(elapsed=started_end_ts - started_ts))
             # Need to process events four times to get correct controller width
             for _ in range(4):
                 self.application.process_events()
@@ -1037,6 +1050,13 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             if not is_reloading and self.settings.value('core/auto unblank') \
                     and self._current_hide_mode != HideMode.Screen:
                 self.set_hide_mode(None)
+        timing_end = time.perf_counter()
+        self.log_debug(
+            '_process_item timing total={total:.3f}s theme={theme:.3f}s load={load:.3f}s list={list_time:.3f}s'
+            .format(total=timing_end - timing_start,
+                theme=timing_after_theme - timing_last,
+                load=timing_after_load - timing_after_theme,
+                list_time=timing_after_preview_list - timing_after_load))
         self.log_debug('_process_item end')
 
     def on_slide_selected_index(self, message):
@@ -1623,6 +1643,15 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             else:
                 self.live_controller.add_service_manager_item(self.service_item, row)
             self.live_controller.preview_widget.setFocus()
+
+    def _start_background_media(self):
+        """
+        Deferred wrapper called via QTimer.singleShot(0) so the display paints
+        before the media player pipeline initialises.
+        """
+        if self.service_item:
+            self.on_media_start(self.service_item)
+            self._raise_displays()
 
     def on_media_start(self, item):
         """

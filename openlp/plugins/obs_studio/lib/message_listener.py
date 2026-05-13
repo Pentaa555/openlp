@@ -21,6 +21,8 @@ The :mod:`~openlp.plugins.obs_studio.lib.message_listener` module contains
 the MessageListener class for the OBS Studio plugin.
 """
 import logging
+import threading
+import time
 
 from openlp.core.common.registry import Registry
 from openlp.plugins.obs_studio.lib.obs_studio_api import ObsStudioAPI
@@ -42,6 +44,10 @@ class MessageListener():
         self.__host = host
         self.__port = port
         self.__password = password
+        self.__connect_lock = threading.Lock()
+        self.__connect_in_progress = False
+        self.__last_connect_attempt = 0.0
+        self.__connect_cooldown = 5.0
         self.__setup()
 
     def __setup(self):
@@ -51,7 +57,7 @@ class MessageListener():
         # Messages are sent from core.ui.slidecontroller
         Registry().register_function('slidecontroller_slide_selected', self.slide_selected)
 
-    def connect(self):
+    def _connect_blocking(self):
         """
         Connect to the OBS Studio WebSocket server.
         """
@@ -61,6 +67,30 @@ class MessageListener():
             log.info("Connected successfully to OBS Studio.")
         except ConnectionError as exception:
             log.error("Failed to make a connection to OBS Studio: %s", exception)
+            self.is_connected = False
+
+    def connect_async(self):
+        """
+        Attempt connection in a background thread to avoid blocking the UI.
+        """
+        with self.__connect_lock:
+            now = time.monotonic()
+            if self.__connect_in_progress:
+                return
+            if now - self.__last_connect_attempt < self.__connect_cooldown:
+                return
+            self.__connect_in_progress = True
+            self.__last_connect_attempt = now
+
+        def _worker():
+            try:
+                self._connect_blocking()
+            finally:
+                with self.__connect_lock:
+                    self.__connect_in_progress = False
+
+        thread = threading.Thread(target=_worker, name='ObsStudioConnect', daemon=True)
+        thread.start()
 
     def slide_selected(self, message):
         """
@@ -72,7 +102,7 @@ class MessageListener():
             is_live = message[1]
             if is_live:
                 if not self.is_connected:
-                    self.connect()
+                    self.connect_async()
                 if self.is_connected:
                     slide = message[0]
                     slide_number = message[2] + 1
