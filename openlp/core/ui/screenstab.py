@@ -84,20 +84,8 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         # Background
         p.fillRect(0, 0, w, h, QtGui.QColor('#111111'))
 
-        # --- Header (clock) --------------------------------------------------
-        real_header_h = max(20, self._clock_px + 8) + 12
-        header_h = int(real_header_h * sy)
-
-        clock_font = QtGui.QFont()
-        clock_font.setPixelSize(max(8, int(self._clock_px * sy)))
-        clock_font.setBold(True)
-        p.setFont(clock_font)
-        p.setPen(QtGui.QColor('#ffffff'))
-        p.drawText(
-            QtCore.QRect(0, 0, w - 6, header_h),
-            int(QtCore.Qt.AlignmentFlag.AlignRight) | int(QtCore.Qt.AlignmentFlag.AlignVCenter),
-            '14:10:35',
-        )
+        # Header removed — clock moved to footer
+        header_h = 0
 
         # --- Footer (next slide) ---------------------------------------------
         real_footer_h = self._next_h + 10
@@ -105,7 +93,7 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         sep_y = h - footer_h - 1
 
         # --- Main text area --------------------------------------------------
-        main_top = header_h
+        main_top = 6  # Small top margin, no header
         main_h = sep_y - main_top
         if main_h > 0:
             text = _PREVIEW_SAMPLE_CURRENT
