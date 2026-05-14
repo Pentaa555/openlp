@@ -191,14 +191,18 @@ class StageDisplayTab(SettingsTab):
         self.stage_group_box.setObjectName('stage_group_box')
         stage_layout = QtWidgets.QFormLayout(self.stage_group_box)
 
+        # Hint label spans the full width (both columns)
+        self._lbl_screens_hint = QtWidgets.QLabel(self.stage_group_box)
+        self._lbl_screens_hint.setWordWrap(True)
+        self._lbl_screens_hint.setStyleSheet('color: #777777; font-style: italic;')
+        stage_layout.addRow(self._lbl_screens_hint)
+
+        # Screen checkboxes row
         self._lbl_screens = QtWidgets.QLabel(self.stage_group_box)
         self.stage_screens_widget = QtWidgets.QWidget(self.stage_group_box)
         self.stage_screens_layout = QtWidgets.QVBoxLayout(self.stage_screens_widget)
         self.stage_screens_layout.setContentsMargins(0, 0, 0, 0)
-        self.stage_screens_layout.setSpacing(2)
-        self._lbl_screens_hint = QtWidgets.QLabel(self.stage_screens_widget)
-        self._lbl_screens_hint.setStyleSheet('color: #777777; font-style: italic;')
-        self.stage_screens_layout.addWidget(self._lbl_screens_hint)
+        self.stage_screens_layout.setSpacing(4)
         self._stage_screen_checkboxes = []  # populated in _build_stage_screen_checkboxes()
         stage_layout.addRow(self._lbl_screens, self.stage_screens_widget)
 
@@ -302,11 +306,13 @@ class StageDisplayTab(SettingsTab):
 
     def _build_stage_screen_checkboxes(self):
         """Rebuild the per-screen checkbox list to match currently-detected screens."""
-        # Remove old checkboxes
-        for cb in self._stage_screen_checkboxes:
+        # Remove old checkboxes immediately (setParent(None) hides them now;
+        # deleteLater() schedules cleanup so we don't briefly show duplicates).
+        while self._stage_screen_checkboxes:
+            cb = self._stage_screen_checkboxes.pop()
             self.stage_screens_layout.removeWidget(cb)
+            cb.setParent(None)
             cb.deleteLater()
-        self._stage_screen_checkboxes = []
 
         saved = self.settings.value('core/stage screens') or []
         if not isinstance(saved, list):
