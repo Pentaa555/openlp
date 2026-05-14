@@ -159,6 +159,35 @@ def check_module(mod, text='', indent='  '):
         importlib.import_module(mod)
         w('OK')
     except ImportError:
+        # On Linux the user may have system-installed packages in
+        # /usr/lib/python3/dist-packages (Debian/Ubuntu). Try those
+        # before declaring failure so the checker works in venvs
+        # that don't include system site-packages.
+        if IS_LIN:
+            sys_path_added = []
+            system_paths = ['/usr/lib/python3/dist-packages', '/usr/local/lib/python3/dist-packages']
+            for p in system_paths:
+                if p not in sys.path and os.path.isdir(p):
+                    sys.path.insert(0, p)
+                    sys_path_added.append(p)
+            try:
+                importlib.import_module(mod)
+                w('OK (system)')
+                # cleanup: remove the paths we added
+                for p in sys_path_added:
+                    try:
+                        sys.path.remove(p)
+                    except ValueError:
+                        pass
+                w(os.linesep)
+                return
+            except Exception:
+                # fall through to FAIL below
+                for p in sys_path_added:
+                    try:
+                        sys.path.remove(p)
+                    except ValueError:
+                        pass
         w('FAIL')
     except Exception:
         w('ERROR')
