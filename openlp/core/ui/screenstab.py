@@ -218,6 +218,12 @@ class ScreensTab(SettingsTab):
         self.stage_clock_size_spin.setSuffix(' px')
         stage_layout.addRow(self._lbl_clock_size, self.stage_clock_size_spin)
 
+        self._lbl_clock_color = QtWidgets.QLabel(self.stage_group_box)
+        self.stage_clock_color_button = QtWidgets.QPushButton(self.stage_group_box)
+        self.stage_clock_color_button.setObjectName('stage_clock_color_button')
+        self.stage_clock_color_button.setFixedWidth(80)
+        stage_layout.addRow(self._lbl_clock_color, self.stage_clock_color_button)
+
         self._lbl_next_height = QtWidgets.QLabel(self.stage_group_box)
         self.stage_next_height_spin = QtWidgets.QSpinBox(self.stage_group_box)
         self.stage_next_height_spin.setRange(30, 2000)
@@ -230,6 +236,7 @@ class ScreensTab(SettingsTab):
         self.stage_text_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_clock_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_next_height_spin.valueChanged.connect(self._update_stage_preview)
+        self.stage_clock_color_button.clicked.connect(self._on_clock_color_clicked)
 
         Registry().register_function('config_screen_changed', self._on_screen_changed)
 
@@ -242,6 +249,7 @@ class ScreensTab(SettingsTab):
         self.stage_text_auto_radio.setText(translate('OpenLP.ScreensTab', 'Best fit'))
         self.stage_text_fixed_radio.setText(translate('OpenLP.ScreensTab', 'Fixed:'))
         self._lbl_clock_size.setText(translate('OpenLP.ScreensTab', 'Clock size:'))
+        self._lbl_clock_color.setText(translate('OpenLP.ScreensTab', 'Clock color:'))
         self._lbl_next_height.setText(translate('OpenLP.ScreensTab', 'Next slide area:'))
         self.stage_screen_combo.setToolTip(
             translate('OpenLP.ScreensTab', 'Screen to use for the Stage Display window')
@@ -287,6 +295,27 @@ class ScreensTab(SettingsTab):
         self.stage_text_size_spin.setEnabled(not auto_checked)
         self._update_stage_preview()
 
+    def _on_clock_color_clicked(self):
+        """Open color picker dialog and save selected color to settings."""
+        settings = Registry().get('settings')
+        current_color_hex = settings.value('core/stage clock color')
+        current_color = QtGui.QColor(current_color_hex)
+        color = QtWidgets.QColorDialog.getColor(current_color, self, translate('OpenLP.ScreensTab', 'Choose clock color'))
+        if color.isValid():
+            hex_color = color.name()
+            settings.setValue('core/stage clock color', hex_color)
+            self._update_clock_color_button()
+            self._update_stage_preview()
+
+    def _update_clock_color_button(self):
+        """Update the button's visual representation of the selected clock color."""
+        settings = Registry().get('settings')
+        color_hex = settings.value('core/stage clock color')
+        color = QtGui.QColor(color_hex)
+        pixmap = QtGui.QPixmap(64, 20)
+        pixmap.fill(color)
+        self.stage_clock_color_button.setIcon(QtGui.QIcon(pixmap))
+
     def _update_stage_preview(self, *_args):
         mode = 'auto' if self.stage_text_auto_radio.isChecked() else 'fixed'
         self.stage_preview.set_values(
@@ -324,6 +353,7 @@ class ScreensTab(SettingsTab):
         self.stage_text_size_spin.setEnabled(mode == 'fixed')
         self.stage_clock_size_spin.setValue(self.settings.value('core/stage clock size'))
         self.stage_next_height_spin.setValue(self.settings.value('core/stage next height'))
+        self._update_clock_color_button()
         self._update_stage_preview()
 
     def save(self):
