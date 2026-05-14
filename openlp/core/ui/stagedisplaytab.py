@@ -48,13 +48,29 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         self._clock_color = '#FFFF00'
         self._next_count = 1
         self._next_display = 'first_line'
-        self.setMinimumSize(280, 158)
-        policy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Fixed,
-        )
-        self.setSizePolicy(policy)
-        self.setFixedHeight(175)
+        self._preview_width = 480
+        self._aspect_ratio = 16 / 9
+        self._apply_aspect_ratio_from_primary_screen()
+
+    def _apply_aspect_ratio_from_primary_screen(self):
+        screen = QtWidgets.QApplication.primaryScreen()
+        if screen:
+            geom = screen.geometry()
+            if geom.height() > 0:
+                self._aspect_ratio = geom.width() / geom.height()
+        self._apply_fixed_size()
+
+    def _apply_fixed_size(self):
+        width = self._preview_width
+        height = max(120, int(round(width / self._aspect_ratio)))
+        self.setFixedSize(width, height)
+
+    def set_screen_aspect_ratio(self, ratio: float):
+        """Update preview aspect ratio (call when target screen selection changes)."""
+        if ratio and ratio > 0:
+            self._aspect_ratio = ratio
+            self._apply_fixed_size()
+            self.update()
 
     def set_values(self, text_mode: str, text_size: int, clock_px: int, next_h: int,
                    clock_color: str = '#FFFF00', next_count: int = 1, next_display: str = 'first_line'):
@@ -206,9 +222,15 @@ class StageDisplayTab(SettingsTab):
         self._stage_screen_checkboxes = []  # populated in _build_stage_screen_checkboxes()
         stage_layout.addRow(self._lbl_screens, self.stage_screens_widget)
 
-        # Preview spans both columns (no label)
+        # Preview spans both columns (no label), centered horizontally
         self.stage_preview = _StagePreviewWidget(self.stage_group_box)
-        stage_layout.addRow(self.stage_preview)
+        preview_row = QtWidgets.QWidget(self.stage_group_box)
+        preview_row_layout = QtWidgets.QHBoxLayout(preview_row)
+        preview_row_layout.setContentsMargins(0, 0, 0, 0)
+        preview_row_layout.addStretch()
+        preview_row_layout.addWidget(self.stage_preview)
+        preview_row_layout.addStretch()
+        stage_layout.addRow(preview_row)
 
         # Text size: radio buttons + optional spinbox in one row
         self._lbl_text_mode = QtWidgets.QLabel(self.stage_group_box)
@@ -328,8 +350,28 @@ class StageDisplayTab(SettingsTab):
             cb = QtWidgets.QCheckBox(label, self.stage_screens_widget)
             cb.setProperty('screen_index', i)
             cb.setChecked(i in selected_indices)
+            cb.toggled.connect(self._update_preview_aspect)
             self.stage_screens_layout.addWidget(cb)
             self._stage_screen_checkboxes.append(cb)
+        self._update_preview_aspect()
+
+    def _update_preview_aspect(self, *_args):
+        """Set preview aspect ratio to first-selected screen, falling back to primary."""
+        screens = QtWidgets.QApplication.screens()
+        target_screen = None
+        for cb in self._stage_screen_checkboxes:
+            if cb.isChecked():
+                idx = int(cb.property('screen_index'))
+                if 0 <= idx < len(screens):
+                    target_screen = screens[idx]
+                    break
+        if target_screen is None:
+            target_screen = QtWidgets.QApplication.primaryScreen()
+        if target_screen is None:
+            return
+        geom = target_screen.geometry()
+        if geom.height() > 0:
+            self.stage_preview.set_screen_aspect_ratio(geom.width() / geom.height())
 
     def _on_text_mode_changed(self, auto_checked: bool):
         self.stage_text_size_spin.setEnabled(not auto_checked)
