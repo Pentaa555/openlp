@@ -214,7 +214,7 @@ class ScreensTab(SettingsTab):
 
         self._lbl_clock_size = QtWidgets.QLabel(self.stage_group_box)
         self.stage_clock_size_spin = QtWidgets.QSpinBox(self.stage_group_box)
-        self.stage_clock_size_spin.setRange(12, 48)
+        self.stage_clock_size_spin.setRange(12, 500)  # Practical upper limit; no hard cap
         self.stage_clock_size_spin.setSuffix(' px')
         stage_layout.addRow(self._lbl_clock_size, self.stage_clock_size_spin)
 
