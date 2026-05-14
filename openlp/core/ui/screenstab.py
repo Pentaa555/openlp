@@ -230,6 +230,12 @@ class ScreensTab(SettingsTab):
         self.stage_next_count_combo.addItems(['1', '2', '3'])
         stage_layout.addRow(self._lbl_next_count, self.stage_next_count_combo)
 
+        self._lbl_next_display = QtWidgets.QLabel(self.stage_group_box)
+        self.stage_next_display_combo = QtWidgets.QComboBox(self.stage_group_box)
+        self.stage_next_display_combo.setObjectName('stage_next_display_combo')
+        self.stage_next_display_combo.addItems(['First line only', 'Full text'])
+        stage_layout.addRow(self._lbl_next_display, self.stage_next_display_combo)
+
         self._lbl_next_height = QtWidgets.QLabel(self.stage_group_box)
         self.stage_next_height_spin = QtWidgets.QSpinBox(self.stage_group_box)
         self.stage_next_height_spin.setRange(30, 2000)
@@ -244,6 +250,7 @@ class ScreensTab(SettingsTab):
         self.stage_next_height_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_clock_color_button.clicked.connect(self._on_clock_color_clicked)
         self.stage_next_count_combo.currentTextChanged.connect(self._update_stage_preview)
+        self.stage_next_display_combo.currentTextChanged.connect(self._update_stage_preview)
 
         Registry().register_function('config_screen_changed', self._on_screen_changed)
 
@@ -258,6 +265,7 @@ class ScreensTab(SettingsTab):
         self._lbl_clock_size.setText(translate('OpenLP.ScreensTab', 'Clock size:'))
         self._lbl_clock_color.setText(translate('OpenLP.ScreensTab', 'Clock color:'))
         self._lbl_next_count.setText(translate('OpenLP.ScreensTab', 'Show next slides:'))
+        self._lbl_next_display.setText(translate('OpenLP.ScreensTab', 'Next slide text:'))
         self._lbl_next_height.setText(translate('OpenLP.ScreensTab', 'Next slide area:'))
         self.stage_screen_combo.setToolTip(
             translate('OpenLP.ScreensTab', 'Screen to use for the Stage Display window')
@@ -364,6 +372,9 @@ class ScreensTab(SettingsTab):
         self._update_clock_color_button()
         next_count = self.settings.value('core/stage next count')
         self.stage_next_count_combo.setCurrentText(str(next_count))
+        display_mode = self.settings.value('core/stage next display')
+        display_text = 'First line only' if display_mode == 'first_line' else 'Full text'
+        self.stage_next_display_combo.setCurrentText(display_text)
         self._update_stage_preview()
 
     def save(self):
