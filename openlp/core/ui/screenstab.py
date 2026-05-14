@@ -49,6 +49,9 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         self._text_size = 48
         self._clock_px = 20
         self._next_h = 50
+        self._clock_color = '#FFFF00'
+        self._next_count = 1
+        self._next_display = 'first_line'
         self.setMinimumSize(280, 158)
         policy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
@@ -57,11 +60,15 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         self.setSizePolicy(policy)
         self.setFixedHeight(175)
 
-    def set_values(self, text_mode: str, text_size: int, clock_px: int, next_h: int):
+    def set_values(self, text_mode: str, text_size: int, clock_px: int, next_h: int,
+                   clock_color: str = '#FFFF00', next_count: int = 1, next_display: str = 'first_line'):
         self._text_mode = text_mode
         self._text_size = text_size
         self._clock_px = clock_px
         self._next_h = next_h
+        self._clock_color = clock_color
+        self._next_count = next_count
+        self._next_display = next_display
         self.update()
 
     def paintEvent(self, event):
