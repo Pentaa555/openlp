@@ -122,26 +122,56 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         p.setPen(QtGui.QColor('#333333'))
         p.drawLine(0, sep_y, w, sep_y)
 
-        # --- Footer label + next text ----------------------------------------
+        # --- Footer: next slides (1-3) + clock at bottom-right ---------
         next_lbl_font = QtGui.QFont()
         next_lbl_font.setPixelSize(max(6, int(10 * sy)))
         next_lbl_font.setBold(True)
-        p.setFont(next_lbl_font)
-        p.setPen(QtGui.QColor('#555555'))
-        p.drawText(
-            QtCore.QRect(4, sep_y + 3, 30, footer_h - 3),
-            int(QtCore.Qt.AlignmentFlag.AlignLeft) | int(QtCore.Qt.AlignmentFlag.AlignVCenter),
-            'NEXT',
-        )
 
         next_txt_font = QtGui.QFont()
         next_txt_font.setPixelSize(max(6, int(13 * sy)))
-        p.setFont(next_txt_font)
-        p.setPen(QtGui.QColor('#888888'))
+
+        next_count = self._next_count
+        y_pos = sep_y + 3
+
+        for i in range(next_count):
+            if i == 0:
+                label = 'NEXT'
+            else:
+                label = f'NEXT+{i}'
+
+            p.setFont(next_lbl_font)
+            p.setPen(QtGui.QColor('#555555'))
+            p.drawText(
+                QtCore.QRect(4, y_pos, 50, 16),
+                int(QtCore.Qt.AlignmentFlag.AlignLeft) | int(QtCore.Qt.AlignmentFlag.AlignVCenter),
+                label,
+            )
+
+            p.setFont(next_txt_font)
+            p.setPen(QtGui.QColor('#888888'))
+            text = _PREVIEW_SAMPLE_NEXT
+            if self._next_display == 'first_line':
+                text = text.split('\n')[0]
+                if len(text) > 60:
+                    text = text[:57] + '…'
+
+            p.drawText(
+                QtCore.QRect(60, y_pos, w - 120, 16),
+                int(QtCore.Qt.AlignmentFlag.AlignLeft) | int(QtCore.Qt.AlignmentFlag.AlignVCenter),
+                text,
+            )
+            y_pos += 18
+
+        # Draw clock at bottom-right
+        clock_font = QtGui.QFont()
+        clock_font.setPixelSize(max(8, int(self._clock_px * sy)))
+        clock_font.setBold(True)
+        p.setFont(clock_font)
+        p.setPen(QtGui.QColor(self._clock_color))
         p.drawText(
-            QtCore.QRect(38, sep_y + 3, w - 42, footer_h - 3),
-            int(QtCore.Qt.AlignmentFlag.AlignLeft) | int(QtCore.Qt.AlignmentFlag.AlignVCenter),
-            _PREVIEW_SAMPLE_NEXT,
+            QtCore.QRect(0, sep_y, w - 6, footer_h),
+            int(QtCore.Qt.AlignmentFlag.AlignRight) | int(QtCore.Qt.AlignmentFlag.AlignBottom),
+            '14:10:35',
         )
         p.end()
 
