@@ -305,10 +305,32 @@ class StageDisplayWindow(QtWidgets.QWidget):
                 self._current_text = _plain(slides[row].get('text', ''))
             else:
                 self._current_text = ''
-            # Next slide
-            next_row = row + 1
-            if next_row < len(slides):
-                self._next_label.setText(_plain(slides[next_row].get('text', '')))
+            # Next slides (1-3 based on settings)
+            try:
+                settings = Registry().get('settings')
+                next_count = settings.value('core/stage next count')
+                display_mode = settings.value('core/stage next display')
+            except Exception:
+                next_count = 1
+                display_mode = 'first_line'
+
+            next_slides_text = []
+            for i in range(1, next_count + 1):
+                next_row = row + i
+                if next_row < len(slides):
+                    slide_text = _plain(slides[next_row].get('text', ''))
+                    label_prefix = 'NEXT' if i == 1 else f'NEXT+{i-1}'
+                    if display_mode == 'first_line':
+                        lines = slide_text.split('\n')
+                        first_line = lines[0] if lines else ''
+                        if len(first_line) > 80:
+                            first_line = first_line[:77] + '…'
+                        next_slides_text.append(f'{label_prefix} ▸ {first_line}')
+                    else:
+                        next_slides_text.append(f'{label_prefix} ▸ {slide_text}')
+
+            if next_slides_text:
+                self._next_label.setText('\n'.join(next_slides_text))
             else:
                 self._next_label.clear()
 
