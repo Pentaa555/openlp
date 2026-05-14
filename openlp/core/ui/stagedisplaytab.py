@@ -28,8 +28,6 @@ from openlp.core.common.registry import Registry
 from openlp.core.lib.settingstab import SettingsTab
 from openlp.core.ui.icons import UiIcons
 
-STAGE_SCREEN_NONE = -1
-
 _PREVIEW_SAMPLE_CURRENT = 'Amazing grace\nhow sweet the sound\nthat saved a wretch like me'
 _PREVIEW_SAMPLE_NEXT = 'I once was lost but now I see…'
 
@@ -193,10 +191,16 @@ class StageDisplayTab(SettingsTab):
         self.stage_group_box.setObjectName('stage_group_box')
         stage_layout = QtWidgets.QFormLayout(self.stage_group_box)
 
-        self._lbl_screen = QtWidgets.QLabel(self.stage_group_box)
-        self.stage_screen_combo = QtWidgets.QComboBox(self.stage_group_box)
-        self.stage_screen_combo.setObjectName('stage_screen_combo')
-        stage_layout.addRow(self._lbl_screen, self.stage_screen_combo)
+        self._lbl_screens = QtWidgets.QLabel(self.stage_group_box)
+        self.stage_screens_widget = QtWidgets.QWidget(self.stage_group_box)
+        self.stage_screens_layout = QtWidgets.QVBoxLayout(self.stage_screens_widget)
+        self.stage_screens_layout.setContentsMargins(0, 0, 0, 0)
+        self.stage_screens_layout.setSpacing(2)
+        self._lbl_screens_hint = QtWidgets.QLabel(self.stage_screens_widget)
+        self._lbl_screens_hint.setStyleSheet('color: #777777; font-style: italic;')
+        self.stage_screens_layout.addWidget(self._lbl_screens_hint)
+        self._stage_screen_checkboxes = []  # populated in _build_stage_screen_checkboxes()
+        stage_layout.addRow(self._lbl_screens, self.stage_screens_widget)
 
         # Preview spans both columns (no label)
         self.stage_preview = _StagePreviewWidget(self.stage_group_box)
@@ -264,7 +268,14 @@ class StageDisplayTab(SettingsTab):
 
     def retranslate_ui(self):
         self.stage_group_box.setTitle(translate('OpenLP.StageDisplayTab', 'Stage Display'))
-        self._lbl_screen.setText(translate('OpenLP.StageDisplayTab', 'Screen:'))
+        self._lbl_screens.setText(translate('OpenLP.StageDisplayTab', 'Screens:'))
+        self._lbl_screens_hint.setText(
+            translate(
+                'OpenLP.StageDisplayTab',
+                'Select one or more screens to show the stage display fullscreen. '
+                'Leave all unchecked to use a windowed display.'
+            )
+        )
         self._lbl_text_mode.setText(translate('OpenLP.StageDisplayTab', 'Text size:'))
         self.stage_text_auto_radio.setText(translate('OpenLP.StageDisplayTab', 'Best fit'))
         self.stage_text_fixed_radio.setText(translate('OpenLP.StageDisplayTab', 'Fixed:'))
@@ -273,9 +284,6 @@ class StageDisplayTab(SettingsTab):
         self._lbl_next_count.setText(translate('OpenLP.StageDisplayTab', 'Show next slides:'))
         self._lbl_next_display.setText(translate('OpenLP.StageDisplayTab', 'Next slide text:'))
         self._lbl_next_height.setText(translate('OpenLP.StageDisplayTab', 'Next slide area:'))
-        self.stage_screen_combo.setToolTip(
-            translate('OpenLP.StageDisplayTab', 'Screen to use for the Stage Display window')
-        )
         self.stage_text_auto_radio.setToolTip(
             translate('OpenLP.StageDisplayTab', 'Automatically fit the text to fill the available space')
         )
@@ -292,25 +300,30 @@ class StageDisplayTab(SettingsTab):
             translate('OpenLP.StageDisplayTab', 'Height of the next-slide preview area')
         )
 
-    def _build_stage_screen_combo(self):
-        """Rebuild the stage screen combo with the current list of detected screens."""
-        self.stage_screen_combo.blockSignals(True)
-        saved = self.settings.value('core/stage screen')
-        self.stage_screen_combo.clear()
-        self.stage_screen_combo.addItem(
-            translate('OpenLP.StageDisplayTab', 'None (windowed / remember position)'),
-            STAGE_SCREEN_NONE,
-        )
+    def _build_stage_screen_checkboxes(self):
+        """Rebuild the per-screen checkbox list to match currently-detected screens."""
+        # Remove old checkboxes
+        for cb in self._stage_screen_checkboxes:
+            self.stage_screens_layout.removeWidget(cb)
+            cb.deleteLater()
+        self._stage_screen_checkboxes = []
+
+        saved = self.settings.value('core/stage screens') or []
+        if not isinstance(saved, list):
+            saved = []
+        selected_indices = {int(i) for i in saved if isinstance(i, int) or str(i).lstrip('-').isdigit()}
+
         screens = QtWidgets.QApplication.screens()
         for i, screen in enumerate(screens):
             label = translate('OpenLP.StageDisplayTab', 'Screen {number} ({res})').format(
                 number=i + 1,
                 res='{w}×{h}'.format(w=screen.geometry().width(), h=screen.geometry().height()),
             )
-            self.stage_screen_combo.addItem(label, i)
-        idx = self.stage_screen_combo.findData(saved if isinstance(saved, int) else STAGE_SCREEN_NONE)
-        self.stage_screen_combo.setCurrentIndex(max(idx, 0))
-        self.stage_screen_combo.blockSignals(False)
+            cb = QtWidgets.QCheckBox(label, self.stage_screens_widget)
+            cb.setProperty('screen_index', i)
+            cb.setChecked(i in selected_indices)
+            self.stage_screens_layout.addWidget(cb)
+            self._stage_screen_checkboxes.append(cb)
 
     def _on_text_mode_changed(self, auto_checked: bool):
         self.stage_text_size_spin.setEnabled(not auto_checked)
@@ -358,13 +371,13 @@ class StageDisplayTab(SettingsTab):
             pass
 
     def _on_screen_changed(self):
-        self._build_stage_screen_combo()
+        self._build_stage_screen_checkboxes()
 
     def resizeEvent(self, event=None):
         QtWidgets.QWidget.resizeEvent(self, event)
 
     def load(self):
-        self._build_stage_screen_combo()
+        self._build_stage_screen_checkboxes()
         mode = self.settings.value('core/stage text mode')
         if mode == 'fixed':
             self.stage_text_fixed_radio.setChecked(True)
@@ -383,7 +396,12 @@ class StageDisplayTab(SettingsTab):
         self._update_stage_preview()
 
     def save(self):
-        self.settings.setValue('core/stage screen', self.stage_screen_combo.currentData())
+        selected = [
+            int(cb.property('screen_index'))
+            for cb in self._stage_screen_checkboxes
+            if cb.isChecked()
+        ]
+        self.settings.setValue('core/stage screens', selected)
         mode = 'fixed' if self.stage_text_fixed_radio.isChecked() else 'auto'
         self.settings.setValue('core/stage text mode', mode)
         self.settings.setValue('core/stage text size', self.stage_text_size_spin.value())

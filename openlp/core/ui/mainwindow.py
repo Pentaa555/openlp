@@ -1167,8 +1167,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         # Close down simulated screens if open
         if hasattr(self, '_sim_live') and self._sim_live is not None:
             self._sim_live.close()
-        if hasattr(self, '_stage_display') and self._stage_display is not None:
-            self._stage_display.close()
+        self._close_stage_displays()
         # Close down the display
         self.live_controller.close_displays()
         # Clean temporary files used by services
@@ -1309,17 +1308,41 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         self.view_live_panel.setChecked(is_visible)
         self.settings.setValue('user interface/is preset layout', False)
 
+    def _close_stage_displays(self):
+        """Close all currently-open Stage Display windows and clear the list."""
+        windows = getattr(self, '_stage_displays', None) or []
+        for w in windows:
+            try:
+                w.close()
+            except Exception:
+                pass
+        self._stage_displays = []
+
     def toggle_stage_display(self, is_visible: bool):
         """
-        Show or hide the native Stage Display window.
+        Show or hide the native Stage Display window(s).
+
+        Reads the `core/stage screens` list setting. If empty, opens a single
+        windowed display. Otherwise opens one fullscreen display per selected screen.
         """
         if is_visible:
-            if not hasattr(self, '_stage_display') or self._stage_display is None:
-                self._stage_display = StageDisplayWindow()
-            self._stage_display.show_stage()
+            self._close_stage_displays()
+            selected = self.settings.value('core/stage screens') or []
+            if not isinstance(selected, list):
+                selected = []
+            screens = QtWidgets.QApplication.screens()
+            valid = [int(i) for i in selected if isinstance(i, int) and 0 <= int(i) < len(screens)]
+            if valid:
+                for screen_idx in valid:
+                    window = StageDisplayWindow(screen_number=screen_idx)
+                    window.show_stage()
+                    self._stage_displays.append(window)
+            else:
+                window = StageDisplayWindow()
+                window.show_stage()
+                self._stage_displays.append(window)
         else:
-            if hasattr(self, '_stage_display') and self._stage_display is not None:
-                self._stage_display.close()
+            self._close_stage_displays()
         self.view_stage_display.setChecked(is_visible)
 
     def toggle_test_screens(self, is_visible: bool):
@@ -1343,20 +1366,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
                 self._sim_live = LivePreviewWindow()
             self._sim_live.show_at(live_rect)
 
-            if not hasattr(self, '_stage_display') or self._stage_display is None:
-                self._stage_display = StageDisplayWindow()
-            self._stage_display.show_stage()
-            self._stage_display.setGeometry(stage_rect)
-            self._stage_display.raise_()
+            # Simulation mode always uses a single windowed stage display
+            self._close_stage_displays()
+            window = StageDisplayWindow()
+            window.show_stage()
+            window.setGeometry(stage_rect)
+            window.raise_()
+            self._stage_displays.append(window)
 
             self.view_stage_display.setChecked(True)
         else:
             if hasattr(self, '_sim_live') and self._sim_live is not None:
                 self._sim_live.close()
                 self._sim_live = None
-            if hasattr(self, '_stage_display') and self._stage_display is not None:
-                self._stage_display.close()
-                self._stage_display = None
+            self._close_stage_displays()
             self.view_stage_display.setChecked(False)
         self.view_test_screens.setChecked(is_visible)
 

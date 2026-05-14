@@ -386,6 +386,7 @@ class Settings(QtCore.QSettings):
         'core/stage clock color': '#FFFF00',  # Yellow — user sets via color picker
         'core/stage next count': 1,  # 1, 2, or 3 next slides to display
         'core/stage next display': 'first_line',  # 'first_line' or 'full_text'
+        'core/stage screens': [],  # List of screen indices; empty = windowed mode
         'core/stage next height': 50,
         'core/override position': False,
         'core/monitor': {},

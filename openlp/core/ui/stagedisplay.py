@@ -132,9 +132,20 @@ class StageDisplayWindow(QtWidgets.QWidget):
     returns True and registration with the live controller is immediate.
     """
 
-    def __init__(self):
+    def __init__(self, screen_number=None):
+        """
+        :param screen_number: Index into QApplication.screens(); when set, the window
+            opens fullscreen on that screen. When None, opens as a regular window
+            (restored geometry / centered fallback).
+        """
         super().__init__(None)
-        self.setWindowFlags(QtCore.Qt.WindowType.Window)
+        self._screen_number = screen_number
+        if screen_number is not None:
+            self.setWindowFlags(
+                QtCore.Qt.WindowType.Window | QtCore.Qt.WindowType.FramelessWindowHint
+            )
+        else:
+            self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self.setWindowTitle(translate('OpenLP.StageDisplay', 'Stage Display'))
         self.setStyleSheet('background-color: #000000;')
@@ -352,31 +363,35 @@ class StageDisplayWindow(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def show_stage(self):
-        settings = Registry().get('settings')
-        screen_number = settings.value('core/stage screen')
         screens = QtWidgets.QApplication.screens()
-        saved = settings.value('core/stage geometry')
-
-        if saved:
-            self.restoreGeometry(saved)
-            # If a specific screen is configured, move there only when not already on it
-            if isinstance(screen_number, int) and 0 <= screen_number < len(screens):
-                target = screens[screen_number].availableGeometry()
-                if not target.contains(self.geometry().center()):
-                    self.move(target.topLeft())
-        elif isinstance(screen_number, int) and 0 <= screen_number < len(screens):
-            target = screens[screen_number].availableGeometry()
-            self.resize(_SIM_W, _SIM_H)
-            self.move(target.center() - self.rect().center())
+        if self._screen_number is not None and 0 <= self._screen_number < len(screens):
+            # Fullscreen on a specific screen
+            target = screens[self._screen_number].geometry()
+            self.setGeometry(target)
+            self._apply_settings()
+            self.showFullScreen()
+            self.raise_()
         else:
-            avail = QtWidgets.QApplication.primaryScreen().availableGeometry()
-            self.resize(_SIM_W, _SIM_H)
-            self.move(avail.center() - self.rect().center())
-
-        self._apply_settings()
-        self.show()
-        self.raise_()
+            # Windowed mode (no screen selected) — restore saved geometry or center
+            settings = Registry().get('settings')
+            saved = settings.value('core/stage geometry')
+            if saved:
+                self.restoreGeometry(saved)
+            else:
+                avail = QtWidgets.QApplication.primaryScreen().availableGeometry()
+                self.resize(_SIM_W, _SIM_H)
+                self.move(avail.center() - self.rect().center())
+            self._apply_settings()
+            self.show()
+            self.raise_()
         self._register_with_live_controller()
+
+    def keyPressEvent(self, event):
+        """Press Esc to close a fullscreen stage display."""
+        if event.key() == QtCore.Qt.Key.Key_Escape and self._screen_number is not None:
+            self.close()
+            return
+        super().keyPressEvent(event)
 
     # ------------------------------------------------------------------
     # Live controller registration
