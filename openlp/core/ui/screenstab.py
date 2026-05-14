@@ -423,6 +423,10 @@ class ScreensTab(SettingsTab):
         self.settings.setValue('core/stage text size', self.stage_text_size_spin.value())
         self.settings.setValue('core/stage clock size', self.stage_clock_size_spin.value())
         self.settings.setValue('core/stage next height', self.stage_next_height_spin.value())
+        self.settings.setValue('core/stage next count', int(self.stage_next_count_combo.currentText()))
+        display_text = self.stage_next_display_combo.currentText()
+        next_display = 'first_line' if display_text == 'First line only' else 'full_text'
+        self.settings.setValue('core/stage next display', next_display)
         # On save update the screens as well
         if self.tab_visited:
             self.settings_form.register_post_process('config_screen_changed')
