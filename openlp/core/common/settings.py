@@ -383,6 +383,9 @@ class Settings(QtCore.QSettings):
         'core/stage text mode': 'auto',
         'core/stage text size': 48,
         'core/stage clock size': 20,
+        'core/stage clock color': '#FFFF00',  # Yellow — user sets via color picker
+        'core/stage next count': 1,  # 1, 2, or 3 next slides to display
+        'core/stage next display': 'first_line',  # 'first_line' or 'full_text'
         'core/stage next height': 50,
         'core/override position': False,
         'core/monitor': {},
