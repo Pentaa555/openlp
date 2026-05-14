@@ -333,13 +333,25 @@ class ScreensTab(SettingsTab):
         self.stage_clock_color_button.setIcon(QtGui.QIcon(pixmap))
 
     def _update_stage_preview(self, *_args):
-        mode = 'auto' if self.stage_text_auto_radio.isChecked() else 'fixed'
-        self.stage_preview.set_values(
-            mode,
-            self.stage_text_size_spin.value(),
-            self.stage_clock_size_spin.value(),
-            self.stage_next_height_spin.value(),
-        )
+        """Refresh the preview when settings change."""
+        try:
+            mode = 'auto' if self.stage_text_auto_radio.isChecked() else 'fixed'
+            settings = Registry().get('settings')
+            clock_color = settings.value('core/stage clock color')
+            next_count = int(self.stage_next_count_combo.currentText())
+            display_text = self.stage_next_display_combo.currentText()
+            next_display = 'first_line' if display_text == 'First line only' else 'full_text'
+            self.stage_preview.set_values(
+                mode,
+                self.stage_text_size_spin.value(),
+                self.stage_clock_size_spin.value(),
+                self.stage_next_height_spin.value(),
+                clock_color=clock_color,
+                next_count=next_count,
+                next_display=next_display,
+            )
+        except Exception:
+            pass
 
     def _on_screen_changed(self):
         self.screen_selection_widget.load()
