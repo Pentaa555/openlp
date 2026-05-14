@@ -30,9 +30,9 @@ docs/superpowers/
 .pylintrc
 .pytest_cache
 .venv
+.venv_local
 .vscode
 .eggs
-.venv
 .mypy_cache
 OpenLP.egg-info
 \#*\#
