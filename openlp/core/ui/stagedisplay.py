@@ -228,20 +228,28 @@ class StageDisplayWindow(QtWidgets.QWidget):
 
     def _apply_settings(self, *_args):
         """Read stage display settings and update widget geometry / styles."""
+        clock_color = '#FFFF00'
         try:
             s = Registry().get('settings')
             self._text_mode = s.value('core/stage text mode')
             self._text_size = s.value('core/stage text size')
             self._clock_px = s.value('core/stage clock size')
             self._next_h = s.value('core/stage next height')
+            clock_color = s.value('core/stage clock color')
         except Exception:
             pass
+        # Apply clock color and size
         self._clock_label.setStyleSheet(
-            f'color: #ffffff; font-size: {self._clock_px}px; font-weight: bold;'
+            f'color: {clock_color}; font-size: {self._clock_px}px; font-weight: bold;'
         )
-        self._header.setFixedHeight(max(20, self._clock_px + 8))
+        # Update footer height (no header to update)
         self._footer.setFixedHeight(self._next_h)
         self._apply_font()
+        # Re-render content to reflect any settings changes (e.g., next slide count/display mode)
+        try:
+            self._refresh_content()
+        except Exception:
+            pass
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
