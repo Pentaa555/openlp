@@ -35,6 +35,7 @@ from openlp.core.ui.advancedtab import AdvancedTab
 from openlp.core.ui.generaltab import GeneralTab
 from openlp.core.ui.servicetab import ServiceTab
 from openlp.core.ui.screenstab import ScreensTab
+from openlp.core.ui.stagedisplaytab import StageDisplayTab
 from openlp.core.ui.themestab import ThemesTab
 from openlp.core.ui.media.mediatab import MediaTab
 from openlp.core.ui.settingsdialog import Ui_SettingsDialog
@@ -82,6 +83,7 @@ class SettingsForm(QtWidgets.QDialog, Ui_SettingsDialog, RegistryProperties):
         self.insert_tab(self.service_tab)
         self.insert_tab(self.advanced_tab)
         self.insert_tab(self.screens_tab)
+        self.insert_tab(self.stage_display_tab)
         self.insert_tab(self.themes_tab)
         self.insert_tab(self.player_tab)
         self.insert_tab(self.projector_tab)
@@ -171,6 +173,7 @@ class SettingsForm(QtWidgets.QDialog, Ui_SettingsDialog, RegistryProperties):
             self.player_tab = MediaTab(self)
             self.api_tab = ApiTab(self)
             self.screens_tab = ScreensTab(self)
+            self.stage_display_tab = StageDisplayTab(self)
         except Exception as e:
             print(e)
         self.general_tab.post_set_up()
