@@ -146,24 +146,8 @@ class StageDisplayWindow(QtWidgets.QWidget):
         self._next_h = 50
 
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 6, 16, 6)
+        root.setContentsMargins(16, 0, 16, 6)  # No top margin (header removed)
         root.setSpacing(4)
-
-        # --- Header: clock only (settings control sizes) -------------------
-        self._header = QtWidgets.QWidget()
-        self._header.setFixedHeight(28)
-        hdr = QtWidgets.QHBoxLayout(self._header)
-        hdr.setContentsMargins(0, 0, 0, 0)
-
-        hdr.addStretch()
-
-        self._clock_label = QtWidgets.QLabel()
-        self._clock_label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
-        hdr.addWidget(self._clock_label)
-
-        root.addWidget(self._header)
 
         # --- Current slide text -------------------------------------------
         self._current_label = QtWidgets.QLabel()
