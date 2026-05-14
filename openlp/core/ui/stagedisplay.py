@@ -162,22 +162,25 @@ class StageDisplayWindow(QtWidgets.QWidget):
         sep.setStyleSheet('background-color: #333333; max-height: 1px;')
         root.addWidget(sep)
 
-        # --- Footer: next slide ----------------------------------------------
+        # --- Footer: next slides (1-3) + clock at bottom-right ---------------
         self._footer = QtWidgets.QWidget()
         self._footer.setFixedHeight(self._next_h)
-        ftr = QtWidgets.QHBoxLayout(self._footer)
+        ftr = QtWidgets.QVBoxLayout(self._footer)
         ftr.setContentsMargins(0, 4, 0, 0)
-        ftr.setSpacing(8)
+        ftr.setSpacing(0)
 
-        next_hdr = QtWidgets.QLabel(translate('OpenLP.StageDisplay', 'NEXT'))
-        next_hdr.setStyleSheet('color: #555555; font-size: 10px; font-weight: bold;')
-        next_hdr.setFixedWidth(36)
-        ftr.addWidget(next_hdr)
-
+        # Next slide text display (will show 1-3 slides)
         self._next_label = QtWidgets.QLabel()
         self._next_label.setStyleSheet('color: #888888; font-size: 13px;')
         self._next_label.setWordWrap(True)
+        self._next_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
         ftr.addWidget(self._next_label, 1)
+
+        # Clock label - positioned at bottom-right
+        self._clock_label = QtWidgets.QLabel()
+        self._clock_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignBottom)
+        self._clock_label.setStyleSheet('color: #FFFF00; font-size: 20px; font-weight: bold;')
+        ftr.addWidget(self._clock_label, 0)
 
         root.addWidget(self._footer)
 
