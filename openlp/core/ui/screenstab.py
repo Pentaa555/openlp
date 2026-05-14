@@ -224,6 +224,12 @@ class ScreensTab(SettingsTab):
         self.stage_clock_color_button.setFixedWidth(80)
         stage_layout.addRow(self._lbl_clock_color, self.stage_clock_color_button)
 
+        self._lbl_next_count = QtWidgets.QLabel(self.stage_group_box)
+        self.stage_next_count_combo = QtWidgets.QComboBox(self.stage_group_box)
+        self.stage_next_count_combo.setObjectName('stage_next_count_combo')
+        self.stage_next_count_combo.addItems(['1', '2', '3'])
+        stage_layout.addRow(self._lbl_next_count, self.stage_next_count_combo)
+
         self._lbl_next_height = QtWidgets.QLabel(self.stage_group_box)
         self.stage_next_height_spin = QtWidgets.QSpinBox(self.stage_group_box)
         self.stage_next_height_spin.setRange(30, 2000)
@@ -237,6 +243,7 @@ class ScreensTab(SettingsTab):
         self.stage_clock_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_next_height_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_clock_color_button.clicked.connect(self._on_clock_color_clicked)
+        self.stage_next_count_combo.currentTextChanged.connect(self._update_stage_preview)
 
         Registry().register_function('config_screen_changed', self._on_screen_changed)
 
@@ -250,6 +257,7 @@ class ScreensTab(SettingsTab):
         self.stage_text_fixed_radio.setText(translate('OpenLP.ScreensTab', 'Fixed:'))
         self._lbl_clock_size.setText(translate('OpenLP.ScreensTab', 'Clock size:'))
         self._lbl_clock_color.setText(translate('OpenLP.ScreensTab', 'Clock color:'))
+        self._lbl_next_count.setText(translate('OpenLP.ScreensTab', 'Show next slides:'))
         self._lbl_next_height.setText(translate('OpenLP.ScreensTab', 'Next slide area:'))
         self.stage_screen_combo.setToolTip(
             translate('OpenLP.ScreensTab', 'Screen to use for the Stage Display window')
@@ -354,6 +362,8 @@ class ScreensTab(SettingsTab):
         self.stage_clock_size_spin.setValue(self.settings.value('core/stage clock size'))
         self.stage_next_height_spin.setValue(self.settings.value('core/stage next height'))
         self._update_clock_color_button()
+        next_count = self.settings.value('core/stage next count')
+        self.stage_next_count_combo.setCurrentText(str(next_count))
         self._update_stage_preview()
 
     def save(self):
