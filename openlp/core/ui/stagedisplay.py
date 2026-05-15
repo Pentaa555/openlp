@@ -56,12 +56,15 @@ _SIM_W = 700
 _SIM_H = 394       # 16:9 at 700 px wide
 
 _STRIP_HTML = re.compile(r'<[^>]+>', re.IGNORECASE)
+_STRIP_SUP = re.compile(r'<sup[^>]*>.*?</sup>', re.IGNORECASE | re.DOTALL)
 _MULTI_NL = re.compile(r'\n{3,}')
 
 
-def _plain(html_text: str) -> str:
+def _plain(html_text: str, strip_sup: bool = False) -> str:
     """Convert OpenLP slide HTML to plain text, preserving line structure."""
     text = html_text or ''
+    if strip_sup:
+        text = _STRIP_SUP.sub('', text)
     text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
     text = re.sub(r'</?p[^>]*>', '\n', text, flags=re.IGNORECASE)
     text = re.sub(r'</div>', '\n', text, flags=re.IGNORECASE)
@@ -155,6 +158,8 @@ class StageDisplayWindow(QtWidgets.QWidget):
         self._text_size = 48
         self._clock_px = 20
         self._next_h = 50
+        self._next_font_px = 20
+        self._show_verse_numbers = False
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(16, 0, 16, 6)  # No top margin (header removed)
@@ -183,7 +188,7 @@ class StageDisplayWindow(QtWidgets.QWidget):
         # Next slide text display (will show 1-3 slides)
         self._next_label = QtWidgets.QLabel()
         self._next_label.setStyleSheet('color: #888888; font-size: 13px;')
-        self._next_label.setWordWrap(True)
+        self._next_label.setWordWrap(False)
         self._next_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
         ftr.addWidget(self._next_label, 1)
 
@@ -223,12 +228,15 @@ class StageDisplayWindow(QtWidgets.QWidget):
             return font
         max_px = max(14, int(min(rect.height(), rect.width() // 2)))
         flags = int(QtCore.Qt.TextFlag.TextWordWrap) | int(QtCore.Qt.AlignmentFlag.AlignCenter)
-        for px in range(max_px, 14, -2):
-            font.setPixelSize(px)
-            br = QtGui.QFontMetrics(font).boundingRect(rect, flags, text)
-            if br.height() <= rect.height():
-                return font
-        font.setPixelSize(14)
+        lo, hi = 14, max_px
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            font.setPixelSize(mid)
+            if QtGui.QFontMetrics(font).boundingRect(rect, flags, text).height() <= rect.height():
+                lo = mid
+            else:
+                hi = mid - 1
+        font.setPixelSize(lo)
         return font
 
     def _apply_font(self):
@@ -246,6 +254,8 @@ class StageDisplayWindow(QtWidgets.QWidget):
             self._text_size = s.value('core/stage text size')
             self._clock_px = s.value('core/stage clock size')
             self._next_h = s.value('core/stage next height')
+            self._next_font_px = s.value('core/stage next font size')
+            self._show_verse_numbers = s.value('core/stage verse numbers')
             clock_color = s.value('core/stage clock color')
         except Exception:
             pass
@@ -253,6 +263,13 @@ class StageDisplayWindow(QtWidgets.QWidget):
         self._clock_label.setStyleSheet(
             f'color: {clock_color}; font-size: {self._clock_px}px; font-weight: bold;'
         )
+        # Apply next-slide font size and cap height to avoid overflow
+        self._next_label.setStyleSheet(
+            f'color: #888888; font-size: {self._next_font_px}px;'
+        )
+        clock_h = self._clock_px + 6
+        next_label_max_h = max(self._next_font_px + 4, self._next_h - clock_h - 4)
+        self._next_label.setMaximumHeight(next_label_max_h)
         # Update footer height (no header to update)
         self._footer.setFixedHeight(self._next_h)
         self._apply_font()
@@ -319,9 +336,10 @@ class StageDisplayWindow(QtWidgets.QWidget):
                 row = live.selected_row
 
             slides = item.display_slides
+            strip_sup = not self._show_verse_numbers
             # Current slide
             if 0 <= row < len(slides):
-                self._current_text = _plain(slides[row].get('text', ''))
+                self._current_text = _plain(slides[row].get('text', ''), strip_sup=strip_sup)
             else:
                 self._current_text = ''
             # Next slides (1-3 based on settings)
@@ -337,7 +355,7 @@ class StageDisplayWindow(QtWidgets.QWidget):
             for i in range(1, next_count + 1):
                 next_row = row + i
                 if next_row < len(slides):
-                    slide_text = _plain(slides[next_row].get('text', ''))
+                    slide_text = _plain(slides[next_row].get('text', ''), strip_sup=strip_sup)
                     label_prefix = 'NEXT' if i == 1 else f'NEXT+{i-1}'
                     if display_mode == 'first_line':
                         lines = slide_text.split('\n')

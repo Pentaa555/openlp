@@ -45,6 +45,7 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         self._text_size = 48
         self._clock_px = 20
         self._next_h = 50
+        self._next_font_px = 20
         self._clock_color = '#FFFF00'
         self._next_count = 1
         self._next_display = 'first_line'
@@ -73,11 +74,13 @@ class _StagePreviewWidget(QtWidgets.QWidget):
             self.update()
 
     def set_values(self, text_mode: str, text_size: int, clock_px: int, next_h: int,
-                   clock_color: str = '#FFFF00', next_count: int = 1, next_display: str = 'first_line'):
+                   clock_color: str = '#FFFF00', next_count: int = 1, next_display: str = 'first_line',
+                   next_font_px: int = 20):
         self._text_mode = text_mode
         self._text_size = text_size
         self._clock_px = clock_px
         self._next_h = next_h
+        self._next_font_px = next_font_px
         self._clock_color = clock_color
         self._next_count = next_count
         self._next_display = next_display
@@ -137,7 +140,7 @@ class _StagePreviewWidget(QtWidgets.QWidget):
         next_lbl_font.setBold(True)
 
         next_txt_font = QtGui.QFont()
-        next_txt_font.setPixelSize(max(6, int(13 * sy)))
+        next_txt_font.setPixelSize(max(6, int(self._next_font_px * sy)))
 
         next_count = self._next_count
         y_pos = sep_y + 3
@@ -279,6 +282,15 @@ class StageDisplayTab(SettingsTab):
         self.stage_next_height_spin.setSuffix(' px')
         stage_layout.addRow(self._lbl_next_height, self.stage_next_height_spin)
 
+        self._lbl_next_font_size = QtWidgets.QLabel(self.stage_group_box)
+        self.stage_next_font_size_spin = QtWidgets.QSpinBox(self.stage_group_box)
+        self.stage_next_font_size_spin.setRange(8, 200)
+        self.stage_next_font_size_spin.setSuffix(' px')
+        stage_layout.addRow(self._lbl_next_font_size, self.stage_next_font_size_spin)
+
+        self.stage_verse_numbers_checkbox = QtWidgets.QCheckBox(self.stage_group_box)
+        stage_layout.addRow(self.stage_verse_numbers_checkbox)
+
         self.tab_layout.addWidget(self.stage_group_box)
         self.tab_layout.addStretch()
 
@@ -286,6 +298,7 @@ class StageDisplayTab(SettingsTab):
         self.stage_text_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_clock_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_next_height_spin.valueChanged.connect(self._update_stage_preview)
+        self.stage_next_font_size_spin.valueChanged.connect(self._update_stage_preview)
         self.stage_clock_color_button.clicked.connect(self._on_clock_color_clicked)
         self.stage_next_count_combo.currentTextChanged.connect(self._update_stage_preview)
         self.stage_next_display_combo.currentTextChanged.connect(self._update_stage_preview)
@@ -324,6 +337,13 @@ class StageDisplayTab(SettingsTab):
         )
         self.stage_next_height_spin.setToolTip(
             translate('OpenLP.StageDisplayTab', 'Height of the next-slide preview area')
+        )
+        self._lbl_next_font_size.setText(translate('OpenLP.StageDisplayTab', 'Next slide font:'))
+        self.stage_next_font_size_spin.setToolTip(
+            translate('OpenLP.StageDisplayTab', 'Font size for the next-slide text')
+        )
+        self.stage_verse_numbers_checkbox.setText(
+            translate('OpenLP.StageDisplayTab', 'Show verse numbers')
         )
 
     def _build_stage_screen_checkboxes(self):
@@ -414,6 +434,7 @@ class StageDisplayTab(SettingsTab):
                 clock_color=clock_color,
                 next_count=next_count,
                 next_display=next_display,
+                next_font_px=self.stage_next_font_size_spin.value(),
             )
         except Exception:
             pass
@@ -435,6 +456,8 @@ class StageDisplayTab(SettingsTab):
         self.stage_text_size_spin.setEnabled(mode == 'fixed')
         self.stage_clock_size_spin.setValue(self.settings.value('core/stage clock size'))
         self.stage_next_height_spin.setValue(self.settings.value('core/stage next height'))
+        self.stage_next_font_size_spin.setValue(self.settings.value('core/stage next font size'))
+        self.stage_verse_numbers_checkbox.setChecked(self.settings.value('core/stage verse numbers'))
         self._update_clock_color_button()
         next_count = self.settings.value('core/stage next count')
         self.stage_next_count_combo.setCurrentText(str(next_count))
@@ -455,6 +478,8 @@ class StageDisplayTab(SettingsTab):
         self.settings.setValue('core/stage text size', self.stage_text_size_spin.value())
         self.settings.setValue('core/stage clock size', self.stage_clock_size_spin.value())
         self.settings.setValue('core/stage next height', self.stage_next_height_spin.value())
+        self.settings.setValue('core/stage next font size', self.stage_next_font_size_spin.value())
+        self.settings.setValue('core/stage verse numbers', self.stage_verse_numbers_checkbox.isChecked())
         self.settings.setValue('core/stage next count', int(self.stage_next_count_combo.currentText()))
         display_text = self.stage_next_display_combo.currentText()
         next_display = 'first_line' if display_text == 'First line only' else 'full_text'

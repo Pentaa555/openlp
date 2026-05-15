@@ -388,6 +388,8 @@ class Settings(QtCore.QSettings):
         'core/stage next display': 'first_line',  # 'first_line' or 'full_text'
         'core/stage screens': [],  # List of screen indices; empty = windowed mode
         'core/stage next height': 50,
+        'core/stage next font size': 20,
+        'core/stage verse numbers': False,  # show/hide verse numbers on stage display
         'core/override position': False,
         'core/monitor': {},
         'core/application version': '0.0',
