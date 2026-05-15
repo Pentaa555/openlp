@@ -899,8 +899,11 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Set theme for displays
         for display in self.displays:
             display.set_theme(theme_data, service_item_type=service_item.service_item_type)
+        # Stage displays are updated asynchronously to avoid blocking the live send
+        sit = service_item.service_item_type
         for display in self.stage_displays:
-            display.set_theme(theme_data, service_item_type=service_item.service_item_type)
+            QtCore.QTimer.singleShot(0, lambda d=display, td=theme_data, s=sit:
+                                     d.set_theme(td, service_item_type=s))
 
     def _process_item(self, service_item, slide_no, is_reloading=False):
         """
@@ -951,7 +954,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             for display in self.displays:
                 display.finish_with_current_item()
             for display in self.stage_displays:
-                display.finish_with_current_item()
+                QtCore.QTimer.singleShot(0, lambda d=display: d.finish_with_current_item())
         # Prepare the new slides for text / image items
         row = 0
         width = self.main_window.control_splitter.sizes()[self.split]
@@ -960,8 +963,9 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             self.preview_display.show()
             for display in self.displays:
                 display.load_verses(self.service_item.rendered_slides)
+            _rendered = self.service_item.rendered_slides
             for display in self.stage_displays:
-                display.load_verses(self.service_item.rendered_slides)
+                QtCore.QTimer.singleShot(0, lambda d=display, r=_rendered: d.load_verses(r))
             # Replace the song menu so the verses match the song and are not cumulative
             if self.is_live:
                 self.toolbar.remove_widget('song_menu')
@@ -986,8 +990,9 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 self.preview_display.load_images(self.service_item.slides)
                 for display in self.displays:
                     display.load_images(self.service_item.slides)
+                _slides = self.service_item.slides
                 for display in self.stage_displays:
-                    display.load_images(self.service_item.slides)
+                    QtCore.QTimer.singleShot(0, lambda d=display, sl=_slides: d.load_images(sl))
             for _, _ in enumerate(self.service_item.slides):
                 row += 1
                 self.slide_list[str(row)] = row - 1
@@ -1012,7 +1017,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 for display in self.displays:
                     display.show_display()
                 for display in self.stage_displays:
-                    display.show_display()
+                    QtCore.QTimer.singleShot(0, lambda d=display: d.show_display())
         self.enable_tool_bar(self.service_item)
         # Reset blanking if needed
         if old_item and self.is_live and (old_item.is_capable(ItemCapabilities.ProvidesOwnDisplay) or
@@ -1246,7 +1251,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 for display in self.displays:
                     display.go_to_slide(row)
                 for display in self.stage_displays:
-                    display.go_to_slide(row)
+                    QtCore.QTimer.singleShot(0, lambda d=display, r=row: d.go_to_slide(r))
                 if not self.service_item.is_text():
                     # reset the store used to display first image
                     self.service_item.bg_image_bytes = None
