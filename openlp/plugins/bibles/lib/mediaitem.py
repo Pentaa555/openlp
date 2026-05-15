@@ -852,9 +852,15 @@ class BibleMediaItem(MediaManagerItem):
         self.add_built_results_to_list_widget(self.current_results)
 
     def add_built_results_to_list_widget(self, results):
-        self.list_view.clear(self.search_status == SearchStatus.NotEnoughText)
-        for item in self.build_list_widget_items(results):
-            self.list_view.addItem(item)
+        self.list_view.blockSignals(True)
+        self.list_view.setUpdatesEnabled(False)
+        try:
+            self.list_view.clear(self.search_status == SearchStatus.NotEnoughText)
+            for item in self.build_list_widget_items(results):
+                self.list_view.addItem(item)
+        finally:
+            self.list_view.setUpdatesEnabled(True)
+            self.list_view.blockSignals(False)
         self.list_view.selectAll()
         self.on_results_view_tab_total_update(ResultsTab.Search)
 
