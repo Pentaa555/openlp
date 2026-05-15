@@ -400,6 +400,6 @@ class GeneralTab(SettingsTab):
         self.logo_background_color = color
 
     def on_search_as_type_check_box_changed(self, check_state):
-        self.is_search_as_you_type_enabled = (check_state == QtCore.Qt.CheckState.Checked)
+        self.is_search_as_you_type_enabled = bool(check_state)
         self.settings_form.register_post_process('songs_config_updated')
         self.settings_form.register_post_process('custom_config_updated')
